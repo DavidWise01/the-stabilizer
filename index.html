@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>THE STABILIZER — how a qubit that can't be copied survives</title>
+<style>
+  :root{--bg:#0d0b08;--panel:#161210;--ink:#e8e0d4;--dim:#8a7f6e;
+    --org:#ff6a00;--org2:#ffb347;--grn:#7dff6a;--red:#ff4d4d;--cyn:#57d8ff;--gold:#ffd24a;--vio:#c060e0;--line:#2a231c}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:13px;padding:14px;display:flex;flex-direction:column;gap:12px;max-width:1100px;margin:0 auto}
+  h1{font-size:18px;letter-spacing:2px;color:var(--org);border-bottom:3px solid var(--org);padding-bottom:3px}
+  h1 .sm{font-size:11px;color:var(--dim);letter-spacing:1px;display:block;margin-top:4px}
+  .sub{color:var(--dim);font-size:11px;line-height:1.6}
+  h2{font-size:11px;letter-spacing:1.5px;color:var(--org2);margin-bottom:6px;text-transform:uppercase}
+  .panel{background:var(--panel);border:1px solid var(--line);padding:12px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:820px){.row2,.row3{grid-template-columns:1fr}}
+  canvas{display:block;width:100%;background:#0a0806;border:1px solid var(--line)}
+  button{background:transparent;color:var(--org);border:1px solid var(--org);font:inherit;font-weight:bold;padding:6px 12px;cursor:pointer;letter-spacing:1px;font-size:11px}
+  button:hover{background:var(--org);color:#000}button.on{background:var(--org);color:#000}
+  .pauli{display:inline-block;width:20px;text-align:center;font-weight:bold;border-radius:3px;padding:1px 0}
+  .pI{color:var(--dim)}.pX{color:var(--org)}.pZ{color:var(--cyn)}.pY{color:var(--vio)}
+  table{border-collapse:collapse;width:100%;font-size:11px}
+  th,td{border:1px solid var(--line);padding:3px 6px;text-align:center}
+  th{color:var(--org2);font-size:10px}
+  td.syn{font-family:monospace;color:var(--gold);letter-spacing:2px}
+  tr.hot{background:rgba(255,106,0,0.18)}
+  .stab-row{font-size:15px;letter-spacing:3px;padding:2px 0}
+  .kbadge{display:inline-block;padding:1px 8px;font-size:10px;font-weight:bold;border-radius:3px;background:rgba(125,255,106,.15);color:var(--grn);border:1px solid var(--grn)}
+  .toddler{background:linear-gradient(180deg,#1a1410,#161210);border:2px dashed var(--org2);padding:14px;border-radius:8px}
+  .toddler h2{color:var(--org2)}
+  .toddler p{line-height:1.7;margin-bottom:8px;color:var(--ink)}
+  .toddler .big{font-size:14px;color:var(--gold)}
+  .ros{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:8px}
+  .ro{background:#0a0806;border:1px solid var(--line);padding:8px}
+  .ro .k{font-size:9px;color:var(--dim);letter-spacing:1px}.ro .v{font-size:15px;margin-top:2px}
+  .src{font-size:10px;color:var(--dim);line-height:1.6;border-left:3px solid var(--org);padding-left:8px}
+  .src a{color:var(--org2);text-decoration:none}
+  .flow{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;font-size:10px}
+  .flow .step{background:#0a0806;border:1px solid var(--line);padding:6px 8px;flex:1;text-align:center;min-width:90px}
+  .flow .arr{color:var(--org)}
+  .mono{font-variant-numeric:tabular-nums}
+  #failcard{display:none;background:#2a0d0d;border:2px solid var(--red);padding:12px;white-space:pre-wrap;color:#ffb3b3}
+</style></head><body>
+<h1>THE STABILIZER<span class="sm">how a qubit you cannot copy survives the world trying to erase it &nbsp;·&nbsp; the [[5,1,3]] perfect code</span></h1>
+
+<div class="panel src">
+  <b style="color:var(--org2)">VERIFIED SOURCES</b> &nbsp;·&nbsp; Code: Laflamme, Miquel, Paz, Zurek, <i>Perfect Quantum Error Correcting Code</i>, Phys. Rev. Lett. 77, 198 (1996), arXiv:quant-ph/9602019 &nbsp;·&nbsp; Formalism: D. Gottesman, <i>Stabilizer Codes and Quantum Error Correction</i>, Caltech PhD thesis 1997, arXiv:quant-ph/9705052 &nbsp;·&nbsp; Every syndrome below computed in Python from the real stabilizers (16/16 distinct, verified).
+</div>
+
+<div class="row2">
+  <div class="panel">
+    <h2>The one function</h2>
+    <div style="font-size:22px;color:var(--gold);text-align:center;padding:10px 0;letter-spacing:1px">M(g, |&psi;&rang;) &rarr; &plusmn;1</div>
+    <p class="sub">Feed in a check <b style="color:var(--org)">g</b> (a Pauli string) and the state. Get back <b style="color:var(--grn)">+1</b> (this check is clean) or <b style="color:var(--red)">&minus;1</b> (an error touched it). <b>That is the entire machine.</b> Everything else is calling this over and over and reading the signs. The payload answers +1 to every check &mdash; so the function reads the <i>error</i> and is blind to the <i>cargo</i>. It protects the qubit precisely because it cannot see it.</p>
+  </div>
+  <div class="panel">
+    <h2>What it delivers</h2>
+    <p class="sub">A <b style="color:var(--gold)">logical qubit</b> &mdash; a fragile blend &alpha;|0&rang;+&beta;|1&rang; the environment is actively trying to scramble, and that <b>no-cloning forbids you from ever copying</b>. No backup, no spare, by law. The machine carries the single irreplaceable original <b>across time</b>, intact, from creation to use &mdash; by wrapping it where the world (and the measurement) can't grab it.</p>
+    <div class="flow" style="margin-top:8px">
+      <div class="step">raw qubit<br><span style="color:var(--red)">dies in &micro;s</span></div>
+      <span class="arr">&rarr;</span>
+      <div class="step">encode<br>5 physical</div>
+      <span class="arr">&rarr;</span>
+      <div class="step">check &amp; fix<br>every round</div>
+      <span class="arr">&rarr;</span>
+      <div class="step"><span style="color:var(--grn)">survives</span><br>delivered</div>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>The [[5,1,3]] code &mdash; label, checks, logicals</h2>
+  <div class="row3">
+    <div>
+      <div style="font-size:20px;color:var(--gold);text-align:center;padding:6px 0">[[ 5 , 1 , 3 ]]</div>
+      <p class="sub"><b style="color:var(--org)">5</b> physical qubits in &middot; <b style="color:var(--grn)">1</b> logical qubit out &middot; distance <b style="color:var(--cyn)">3</b> (corrects any 1 error). Rate 1/5. The smallest code that fixes an arbitrary single-qubit error &mdash; <span class="kbadge">PERFECT</span> every error gets a unique fingerprint.</p>
+    </div>
+    <div>
+      <h2 style="font-size:10px">4 stabilizers (the checks)</h2>
+      <div id="stabs" class="mono"></div>
+      <p class="sub" style="margin-top:6px">n&minus;k = 4 checks. All commute &mdash; measured together, they don't disturb each other or the data.</p>
+    </div>
+    <div>
+      <h2 style="font-size:10px">2 logical operators (the payload controls)</h2>
+      <div class="stab-row"><span style="color:var(--dim)">X&#772; =</span> <span class="pauli pX">X</span><span class="pauli pX">X</span><span class="pauli pX">X</span><span class="pauli pX">X</span><span class="pauli pX">X</span></div>
+      <div class="stab-row"><span style="color:var(--dim)">Z&#772; =</span> <span class="pauli pZ">Z</span><span class="pauli pZ">Z</span><span class="pauli pZ">Z</span><span class="pauli pZ">Z</span><span class="pauli pZ">Z</span></div>
+      <p class="sub" style="margin-top:6px">They slip past every check (never corrected away) yet flip the logical qubit. Their weight = 5; the shortest logical = distance 3's guarantee. On a torus these are the two <b>loops</b>.</p>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Drive it &mdash; inject an error, read the fingerprint</h2>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px" id="errbtns"></div>
+  <div class="row2">
+    <div>
+      <canvas id="scene" width="500" height="240"></canvas>
+      <div class="ros" id="ros"></div>
+    </div>
+    <div>
+      <h2 style="font-size:10px">Syndrome lookup table (verified, 16/16 distinct)</h2>
+      <div style="max-height:280px;overflow-y:auto"><table id="tbl"></table></div>
+    </div>
+  </div>
+</div>
+
+<div class="toddler">
+  <h2>&#127774; the toddler's corner</h2>
+  <p class="big">You have one magic marble. It's the only one in the whole world &mdash; you're <b>not allowed to make another</b>, ever. And it melts if anyone touches it or even looks at it too hard.</p>
+  <p>So how do you carry it across the room without it melting? Here's the trick: you hide the marble inside <b>five ordinary pebbles</b>, spread out so the marble isn't really <i>in</i> any single pebble &mdash; it's in the <b>pattern</b> of all five together.</p>
+  <p>Now you have four little helpers. Each helper doesn't look at the marble (looking would melt it!). Instead each one just checks: <b>"did anything bump <i>my</i> pebbles?"</b> and answers <b style="color:var(--grn)">yes</b> or <b style="color:var(--red)">no</b>. Four yes/no answers together make a little <b>secret code</b> &mdash; and that code tells you <i>exactly which pebble got bumped</i>, without anyone ever peeking at the marble.</p>
+  <p>You fix the bumped pebble, and the marble is still perfectly safe in the pattern. Do this over and over &mdash; check, fix, check, fix &mdash; and the marble rides all the way across the room, never touched, never melted, still the one and only.</p>
+  <p class="big">That's the whole thing: <b>don't look at the treasure &mdash; watch the guards around it.</b> The guards catch every bump, and the treasure you're never allowed to copy gets home safe.</p>
+</div>
+
+<div id="failcard"></div>
+
+<script>
+"use strict";
+const DATA={"stabs": ["XZZXI", "IXZZX", "XIXZZ", "ZXIXZ"], "table": [{"name": "clean", "op": "IIIII", "syn": "0000"}, {"name": "X1", "op": "XIIII", "syn": "0001"}, {"name": "Y1", "op": "YIIII", "syn": "1011"}, {"name": "Z1", "op": "ZIIII", "syn": "1010"}, {"name": "X2", "op": "IXIII", "syn": "1000"}, {"name": "Y2", "op": "IYIII", "syn": "1101"}, {"name": "Z2", "op": "IZIII", "syn": "0101"}, {"name": "X3", "op": "IIXII", "syn": "1100"}, {"name": "Y3", "op": "IIYII", "syn": "1110"}, {"name": "Z3", "op": "IIZII", "syn": "0010"}, {"name": "X4", "op": "IIIXI", "syn": "0110"}, {"name": "Y4", "op": "IIIYI", "syn": "1111"}, {"name": "Z4", "op": "IIIZI", "syn": "1001"}, {"name": "X5", "op": "IIIIX", "syn": "0011"}, {"name": "Y5", "op": "IIIIY", "syn": "0111"}, {"name": "Z5", "op": "IIIIZ", "syn": "0100"}], "distinct": 16};
+function failLoud(w,e){const c=document.getElementById('failcard');c.style.display='block';
+  c.textContent="FAULT \u2014 "+w+"\n"+(e&&e.stack?e.stack:String(e));}
+try{
+const $=id=>document.getElementById(id);
+function pauliSpan(P){const cls={I:'pI',X:'pX',Y:'pY',Z:'pZ'}[P];return '<span class="pauli '+cls+'">'+P+'</span>';}
+
+// stabilizers
+$('stabs').innerHTML = DATA.stabs.map((g,i)=>
+  '<div class="stab-row"><span style="color:var(--dim)">g'+(i+1)+' =</span> '+g.split('').map(pauliSpan).join('')+'</div>').join('');
+
+// error buttons
+const errs=DATA.table.filter(r=>r.name!=='clean');
+let current='clean';
+$('errbtns').innerHTML='<button class="eb on" data-e="clean">no error</button>'+
+  errs.map(r=>'<button class="eb" data-e="'+r.name+'">'+r.name+'</button>').join('');
+document.querySelectorAll('.eb').forEach(b=>b.onclick=()=>{
+  current=b.dataset.e;document.querySelectorAll('.eb').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  draw();renderTable();renderRos();
+});
+
+// table
+function renderTable(){
+  let h='<tr><th>error</th><th>operator</th><th>syndrome<br>g1 g2 g3 g4</th></tr>';
+  for(const r of DATA.table){
+    const hot=r.name===current?' class="hot"':'';
+    h+='<tr'+hot+'><td>'+(r.name==='clean'?'\u2014':r.name)+'</td><td class="mono">'+
+      r.op.split('').map(pauliSpan).join('')+'</td><td class="syn">'+r.syn.split('').join(' ')+'</td></tr>';
+  }
+  $('tbl').innerHTML=h;
+}
+
+// scene: 5 qubits, checks light up per syndrome, error marked
+const cv=$('scene'),g=cv.getContext('2d');
+function draw(){
+  const W=cv.width,H=cv.height;g.fillStyle='#0a0806';g.fillRect(0,0,W,H);
+  const row=DATA.table.find(r=>r.name===current);
+  const syn=row.syn;
+  const errPos = current==='clean'? -1 : (parseInt(current.slice(1))-1);
+  const errType = current==='clean'? '' : current[0];
+  // 5 qubits across
+  const x0=60,dx=(W-120)/4,qy=90;
+  const colP={X:'#ff6a00',Y:'#c060e0',Z:'#57d8ff'};
+  for(let i=0;i<5;i++){
+    const x=x0+i*dx;
+    const hit=(i===errPos);
+    g.strokeStyle=hit?colP[errType]:'#2a231c';g.lineWidth=hit?3:1.5;
+    g.fillStyle=hit?'rgba(255,106,0,0.12)':'#161210';
+    g.beginPath();g.arc(x,qy,22,0,6.28);g.fill();g.stroke();g.lineWidth=1;
+    g.fillStyle=hit?colP[errType]:'#8a7f6e';g.font='bold 13px ui-monospace';
+    g.fillText('q'+(i+1),x-9,qy+5);
+    if(hit){g.fillStyle=colP[errType];g.font='bold 11px ui-monospace';g.fillText(errType+' error',x-16,qy-30);}
+  }
+  // 4 check lamps below
+  const cy=180;
+  g.fillStyle='#8a7f6e';g.font='10px ui-monospace';g.fillText('checks (syndrome):',20,cy-22);
+  for(let j=0;j<4;j++){
+    const x=x0+j*dx+dx*0.3;
+    const on=syn[j]==='1';
+    g.fillStyle=on?'#ff4d4d':'#1c3a1c';
+    g.beginPath();g.arc(x,cy,13,0,6.28);g.fill();
+    g.strokeStyle=on?'#ff4d4d':'#2a4a2a';g.stroke();
+    g.fillStyle=on?'#000':'#7dff6a';g.font='bold 11px ui-monospace';g.fillText(syn[j],x-3,cy+4);
+    g.fillStyle='#8a7f6e';g.font='9px ui-monospace';g.fillText('g'+(j+1),x-6,cy+26);
+  }
+  // verdict
+  g.font='bold 12px ui-monospace';
+  if(current==='clean'){g.fillStyle='#7dff6a';g.fillText('syndrome 0000 \u2014 all clear, payload safe',x0,H-12);}
+  else{g.fillStyle='#ffd24a';g.fillText('syndrome '+syn+' \u2014 names '+current+' exactly \u2192 apply fix',x0,H-12);}
+}
+function renderRos(){
+  const row=DATA.table.find(r=>r.name===current);
+  const ro=(k,v,c)=>'<div class="ro"><div class="k">'+k+'</div><div class="v mono"'+(c?' style="color:'+c+'"':'')+'>'+v+'</div></div>';
+  $('ros').innerHTML=
+    ro('injected',current==='clean'?'none':current,current==='clean'?'#7dff6a':'#ff6a00')+
+    ro('syndrome',row.syn,'#ffd24a')+
+    ro('data looked at?','never','#7dff6a')+
+    ro('fingerprints','16 / 16 unique','#57d8ff');
+}
+draw();renderTable();renderRos();
+}catch(e){failLoud('init',e);}
+</script>
+</body></html>
